@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EBIM English Centre - Online Quiz</title>
+    <style>
+        :root { 
+            --primary: #1a73e8; 
+            --light-blue: #e8f0fe; /* Màu xanh dương nhạt cho chọn bài */
+            --light-pink: #f8d7da; /* Màu hồng cho câu sai */
+            --correct-green: #d4edda; 
+            --dark-red: #721c24;
+            --dark-green: #155724;
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 850px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1 { color: var(--primary); text-align: center; text-transform: uppercase; margin-bottom: 5px; }
+        .center-name { text-align: center; font-weight: bold; color: #555; margin-bottom: 30px; }
+        
+        .info-box { display: flex; gap: 15px; background: var(--light-blue); padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #adc6ff; border-radius: 6px; font-size: 16px; }
+
+        /* Giao diện bài đọc - Màu xanh dương nhạt */
+        .quiz-card { background: #f0f7ff; border-radius: 15px; padding: 25px; margin-bottom: 30px; border: 1px solid #cfe2ff; }
+        .passage { background: white; border-left: 5px solid var(--primary); padding: 15px; font-style: italic; line-height: 1.8; margin-bottom: 20px; border-radius: 8px; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        
+        .q-item { margin-bottom: 20px; }
+        .q-text { font-weight: bold; margin-bottom: 15px; display: block; font-size: 1.1em; color: #084298; }
+        
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        
+        /* Ô chọn đáp án */
+        .opt { 
+            background: #fff; border: 1px solid #dee2e6; border-radius: 10px; padding: 15px; 
+            cursor: pointer; display: flex; align-items: center; transition: 0.3s; font-weight: 500;
+        }
+        .opt:hover { background: var(--light-blue); }
+        .opt input { margin-right: 12px; width: 18px; height: 18px; cursor: pointer; }
+        
+        /* Hiển thị đáp án sau khi nộp */
+        .ans-feedback { 
+            margin-top: 15px; font-weight: bold; font-size: 1.1em; display: none; 
+            padding: 10px; border-radius: 8px; border: 1px solid #ffc107; background: #fff3cd; color: #856404;
+        }
+
+        /* Màu sắc khi chấm điểm */
+        .is-correct-box { background: var(--correct-green) !important; border-color: #28a745 !important; color: var(--dark-green); }
+        .is-wrong-box { background: var(--light-pink) !important; border-color: #f5c6cb !important; color: var(--dark-red); }
+
+        button#btnSubmit { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; box-shadow: 0 4px 6px rgba(26,115,232,0.2); }
+        button#btnSubmit:hover { background: #1557b0; }
+        button#btnSubmit:disabled { background: #ccc; cursor: not-allowed; }
+        #msg { text-align: center; font-weight: bold; margin-top: 20px; font-size: 22px; }
+        
+        @media (max-width: 600px) { .options { grid-template-columns: 1fr; } .info-box { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>HỆ THỐNG BÀI TẬP TRỰC TUYẾN</h1>
+    <div class="center-name">MS TRUNG ENGLISH - EBIM ENGLISH CENTRE</div>
+
+    <div class="info-box">
+        <input type="text" id="stdName" placeholder="Họ và Tên học sinh...">
+        <input type="text" id="stdClass" placeholder="Lớp...">
+    </div>
+
+    <div id="quiz-container"></div>
+
+    <button id="btnSubmit" onclick="submitExam()">Nộp bài</button>
+    <div id="msg"></div>
+</div>
+
+<script>
+    // 1. THAY LINK WEB APP CỦA THẦY VÀO ĐÂY
+    const SCRIPT_URL = 'DÁN_LINK_WEB_APP_CỦA_THẦY_VÀO_ĐÂY';
+
+    const quizData = [
+        {
+            title: "1. GRADUATION CEREMONY",
+            passage: "The school Youth Union would like to announce...\n- All students of Grade 12 (13) ______ present by 17:00 on Jun 29, 2024.",
+            questions: [
+                { qNum: 13, ans: "B", fullAns: "have to be", opts: ["A. must", "B. have to be", "C. due to", "D. going to"] },
+                { qNum: 14, ans: "D", fullAns: "costumes", opts: ["A. customs", "B. activities", "C. cultures", "D. costumes"] }
+            ]
+        },
+        {
+            title: "2. FOOTBALL CHAMPIONSHIP",
+            passage: "The match between Nam Dinh and Binh Duong on Sunday, April 18 (13) _____ due to severe weather conditions.",
+            questions: [
+                { qNum: 13, ans: "C", fullAns: "has been postponed", opts: ["A. has postponed", "B. posted", "C. has been postponed", "D. postpones"] }
+            ]
+        }
+    ];
+
+    function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
+
+    function initQuiz() {
+        const container = document.getElementById('quiz-container');
+        const shuffledTopics = shuffle([...quizData]);
+
+        shuffledTopics.forEach(data => {
+            const card = document.createElement('div');
+            card.className = 'quiz-card';
+            let html = `<h3>${data.title}</h3><div class="passage">${data.passage}</div>`;
+            
+            const shuffledQs = shuffle([...data.questions]);
+            shuffledQs.forEach(q => {
+                html += `
+                    <div class="q-item" data-ans="${q.ans}" data-fullans="${q.fullAns}" data-qnum="${q.qNum}" data-topic="${data.title}">
+                        <span class="q-text">Câu ${q.qNum}: (Chọn đáp án đúng)</span>
+                        <div class="options">
+                            ${q.opts.map(o => `
+                                <label class="opt">
+                                    <input type="radio" name="q${q.qNum}" value="${o[0]}">
+                                    ${o.substring(3)}
+                                </label>
+                            `).join('')}
+                        </div>
+                        <div class="ans-feedback" id="feedback${q.qNum}"></div>
+                    </div>`;
+            });
+            card.innerHTML = html;
+            container.appendChild(card);
+        });
+    }
+
+    function submitExam() {
+        const name = document.getElementById('stdName').value.trim();
+        const lop = document.getElementById('stdClass').value.trim();
+        if(!name || !lop) { alert("Thầy nhắc em nhập Họ tên và Lớp nhé!"); return; }
+
+        let score = 0, total = 0, wrongs = [];
+        document.querySelectorAll('.q-item').forEach(item => {
+            total++;
+            const correct = item.getAttribute('data-ans');
+            const fullAns = item.getAttribute('data-fullans');
+            const selectedOpt = item.querySelector('input[type="radio"]:checked');
+            const user = selectedOpt ? selectedOpt.value : "X";
+            const feedback = item.querySelector('.ans-feedback');
+
+            feedback.style.display = 'block';
+            feedback.innerHTML = `X Answer: ${fullAns}`;
+
+            item.querySelectorAll('.opt').forEach(o => {
+                const val = o.querySelector('input').value;
+                if(val === correct) o.classList.add('is-correct-box');
+                if(val === user && user !== correct) o.classList.add('is-wrong-box'); // Màu hồng cho câu sai
+            });
+
+            if(user === correct) score++;
+            else wrongs.push(`Q${qNum}:${user}/${correct}`);
+        });
+
+        document.getElementById('btnSubmit').disabled = true;
+        document.getElementById('msg').innerText = "Đang gửi kết quả...";
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ fullname: name, classname: lop, score: `${score}/${total}`, details: wrongs.join(";") })
+        }).then(() => {
+            document.getElementById('msg').innerHTML = `<span style="color:var(--dark-green)">Kết quả: ${score}/${total}</span>`;
+        });
+    }
+    window.onload = initQuiz;
+</script>
+</body>
+</html>
